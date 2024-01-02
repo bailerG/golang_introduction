@@ -2,31 +2,62 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 )
 
 func main() {
-	http.HandleFunc("/", indexHandler)
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("Defaulting to port %s", port)
-	}
+	showIntroduction()
+	for {
+		showMenu()
 
-	log.Printf("Listening on port %s", port)
-	log.Printf("Open http://localhost:%s in the browser", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+		option := readOption()
+
+		switch option {
+		case 1:
+			startMonitoring()
+		case 2:
+			fmt.Println("Exibindo Logs...")
+		case 0:
+			fmt.Println("Saindo do programa...")
+			os.Exit(0)
+		default:
+			fmt.Println("Não conheço este option")
+			os.Exit(-1)
+		}
+	}
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	_, err := fmt.Fprint(w, "Hello, World!")
+func startMonitoring() {
+	fmt.Println("Monitorando...")
+	url := "https://www.youtube.com/"
+	response, err := http.Get(url)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println(err)
+	} else if response.StatusCode == 200 {
+		fmt.Println("Site está online")
+	} else {
+		fmt.Println("Site está offline")
 	}
+}
+
+func showIntroduction() {
+	name := "Douglas"
+	version := 1.1
+	fmt.Println("Olá, sr(a).", name)
+	fmt.Println("Este programa está na versão", version)
+}
+
+func showMenu() {
+	fmt.Println("1- Iniciar Monitoramento")
+	fmt.Println("2- Exibir Logs")
+	fmt.Println("0- Sair do Programa")
+}
+
+func readOption() int {
+	var chosenOption int
+	fmt.Scan(&chosenOption)
+	fmt.Println("O comando escolhido foi:", chosenOption)
+
+	return chosenOption
 }
