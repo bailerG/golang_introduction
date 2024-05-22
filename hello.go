@@ -1,63 +1,112 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func main() {
-	showIntroduction()
+
+	urls := openFile()
+
+	for i := range urls {
+		request(urls[i])
+	}
+	printLogs()
+	clearLogs()
+}
+
+func request(site string) {
+	result, err := http.Get(site)
+
+	if err != nil {
+		fmt.Println("Ocorreu um erro com a requisição: ", err)
+		return
+	}
+
+	fmt.Println("Resultado: ", result.Status)
+
+	if result.StatusCode == 200 {
+		createLog(site, true)
+		return
+	} else {
+		createLog(site, false)
+		return
+	}
+}
+
+func openFile() []string {
+	var result []string
+
+	file, err := os.Open("urls.txt")
+
+	if err != nil {
+		fmt.Println("Erro ao abrir o arquivo: ", err)
+	}
+
+	reader := bufio.NewReader(file)
+
 	for {
-		showMenu()
+		line, err := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
 
-		option := readOption()
+		result = append(result, line)
 
-		switch option {
-		case 1:
-			startMonitoring()
-		case 2:
-			fmt.Println("Exibindo Logs...")
-		case 0:
-			fmt.Println("Saindo do programa...")
-			os.Exit(0)
-		default:
-			fmt.Println("Não conheço este option")
-			os.Exit(-1)
+		if err == io.EOF {
+			break
 		}
 	}
-}
 
-func startMonitoring() {
-	fmt.Println("Monitorando...")
-	url := "https://www.youtube.com/"
-	response, err := http.Get(url)
-	if err != nil {
-		fmt.Println(err)
-	} else if response.StatusCode == 200 {
-		fmt.Println("Site está online")
-	} else {
-		fmt.Println("Site está offline")
+	fileErr := file.Close()
+
+	if fileErr != nil {
+		fmt.Println("Erro ao fechar o arquivo: ", fileErr)
 	}
+
+	return result
 }
 
-func showIntroduction() {
-	name := "Douglas"
-	version := 1.1
-	fmt.Println("Olá, sr(a).", name)
-	fmt.Println("Este programa está na versão", version)
+func createLog(text string, status bool) {
+	file, err := os.OpenFile("loggin.txt", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println("Erro ao fechar arquivo: ", err)
+		}
+	}(file)
+
+	if err != nil {
+		fmt.Println("Erro ao registrar logs: ", err)
+	}
+
+	_, err = file.WriteString(time.Now().Format("02/01/2006 - 15:04:05 ") + text + " - online: " + strconv.FormatBool(status) + "\n")
+	if err != nil {
+		return
+	}
+
 }
 
-func showMenu() {
-	fmt.Println("1- Iniciar Monitoramento")
-	fmt.Println("2- Exibir Logs")
-	fmt.Println("0- Sair do Programa")
+func printLogs() {
+	file, err := os.ReadFile("loggin.txt")
+	if err != nil {
+		fmt.Println("Erro ao abrir logs: ", err)
+		return
+	}
+
+	fmt.Println(string(file))
 }
 
-func readOption() int {
-	var chosenOption int
-	fmt.Scan(&chosenOption)
-	fmt.Println("O comando escolhido foi:", chosenOption)
-
-	return chosenOption
+func clearLogs() {
+	err := os.Remove("loggin.txt")
+	if err != nil {
+		fmt.Print("Erro ao excluir logs: ", err)
+	}
+	return
 }
